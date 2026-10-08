@@ -115,6 +115,20 @@ public class StayParamFieldWindow
                 fieldPaddingMode = LOC.Get("PARAM_SP_FieldWindow_FieldPadding_Hidden");
 
             GUI.Tooltip(LOC.Get("PARAM_SP_FieldWindow_FieldPadding_Hint", fieldPaddingMode));
+
+            // Toggle: Display Vanilla Columns
+            GUI.DisplayToggleButton("stayVanillaColToggle", Icons.AddressBook,
+                ref CFG.Current.Param_ShowVanillaColumn,
+                "PARAM_FieldWindow_VanillaCol_Hidden",
+                "PARAM_FieldWindow_VanillaCol_Visible",
+                "PARAM_FieldWindow_VanillaCol_Hint");
+
+            // Toggle: Display Modified Background
+            GUI.DisplayToggleButton("stayModifiedBackgroundToggle", Icons.Bars,
+                ref CFG.Current.ParamEditor_Field_List_Display_Modified_Field_Bg,
+                "PARAM_FieldWindow_ModifiedBg_Hidden",
+                "PARAM_FieldWindow_ModifiedBg_Visible",
+                "PARAM_FieldWindow_ModifiedBg_Hint");
         }
 
         ImGui.EndChild();
