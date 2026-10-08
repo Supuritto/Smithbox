@@ -1242,18 +1242,24 @@ public class ParamBank : IDisposable
 
         // Stay Params
         StayParams = new();
-        var stayParamPath = "param/stayparam/stayparam.parambnd.dcx";
+        // Vanilla DS3 ships no stayparam container; the 5 stay params live inside Data0.bdt
+        var stayParamPath = @"Data0.bdt";
 
         if (TargetFS.FileExists(stayParamPath))
         {
             try
             {
-                var binderData = TargetFS.ReadFile(stayParamPath);
-                using var bnd = BND4.Read(binderData.Value);
+                var data = TargetFS.GetFile(stayParamPath).GetData().ToArray();
+                using var bnd = SFUtil.DecryptDS3Regulation(data);
 
                 // Load every param in the regulation
                 foreach (BinderFile f in bnd.Files)
                 {
+                    if (!f.Name.EndsWith(".stayparam", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     var paramName = Path.GetFileNameWithoutExtension(f.Name.Replace('\\', Path.DirectorySeparatorChar));
 
                     if (StayParams.ContainsKey(paramName))
@@ -1326,6 +1332,11 @@ public class ParamBank : IDisposable
             {
                 p.Bytes = Params[Path.GetFileNameWithoutExtension(p.Name)].Write();
             }
+            // Stay params sit next to the params inside Data0.bdt
+            else if (StayParams.ContainsKey(Path.GetFileNameWithoutExtension(p.Name)))
+            {
+                p.Bytes = StayParams[Path.GetFileNameWithoutExtension(p.Name)].Write();
+            }
         }
 
         // If not loose write out the new regulation
@@ -1350,46 +1361,17 @@ public class ParamBank : IDisposable
             };
 
             ProjectUtils.WriteWithBackup(Project, fs, toFs, Path.Join("param", "gameparam", "gameparam_dlc2.parambnd.dcx"), paramBND);
+
+            // The loose gameparam binder cannot carry stay params, so flush them to Data0.bdt
+            if (StayParams.Count > 0)
+            {
+                ProjectUtils.WriteWithBackup(Project, fs, toFs, @"Data0.bdt", paramBnd, ProjectType.DS3);
+            }
         }
 
         if (CFG.Current.ParamEditor_Row_Name_Strip_DS3)
         {
             RowNameHelper.RowNameRestore(Project);
-        }
-
-        // Stay Params
-        var stayParamPath = "param/stayparam/stayparam.parambnd.dcx";
-        if (StayParams.Count > 0)
-        {
-            if (fs.FileExists(stayParamPath))
-            {
-                try
-                {
-                    var binderData = fs.ReadFile(stayParamPath);
-                    using var bnd = BND4.Read(binderData.Value);
-
-                    // Load every param in the regulation
-                    foreach (BinderFile f in bnd.Files)
-                    {
-                        var paramName = Path.GetFileNameWithoutExtension(f.Name.Replace('\\', Path.DirectorySeparatorChar));
-
-                        if (StayParams.ContainsKey(paramName))
-                        {
-                            var newData = StayParams[paramName].Write();
-                            f.Bytes = newData;
-                        }
-                    }
-
-                    var newBinderData = bnd.Write();
-
-                    toFs.WriteFile(stayParamPath, newBinderData);
-                }
-                catch
-                {
-                    Smithbox.LogError(this,
-                        LOC.Get("PARAM_Data_Failed_to_Write_StayParam", stayParamPath));
-                }
-            }
         }
 
         return successfulSave;
