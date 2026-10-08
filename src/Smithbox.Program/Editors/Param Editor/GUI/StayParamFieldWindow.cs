@@ -135,8 +135,11 @@ public class StayParamFieldWindow
     // Default field display
     public void DisplayFlatTable(bool isActiveView, string activeParam, StructParam stayParam, ParamMeta meta, ParamAnnotationEntry annotations, ref int imguiId)
     {
+        // Vanilla Stay Param, for comparison
+        var vanillaStayParam = Project.Handler.ParamData.VanillaBank?.StayParams.GetValueOrDefault(activeParam);
+
         // Determine column count
-        var columnCount = 2;
+        var columnCount = CFG.Current.Param_ShowVanillaColumn ? 3 : 2;
 
         // Field Table
         if (EditorTableUtils.ImGuiTableStdColumns("StayParamFieldsT", columnCount, false))
@@ -229,11 +232,28 @@ public class StayParamFieldWindow
                 //------------------------------
                 // Value Column
                 //------------------------------
+                var cellValue = field.Value;
+                var vanillaCellValue = vanillaStayParam?[field.Def.InternalName]?.Value;
+                var fieldDiff = ParamUtils.IsValueDiff(ref cellValue, ref vanillaCellValue, propType);
+
                 if (ImGui.TableNextColumn())
                 {
                     bool pushedStyle = false;
 
-                    if (metaContext.HasAnyReferenceElements())
+                    if (fieldDiff)
+                    {
+                        if (CFG.Current.ParamEditor_Field_List_Display_Modified_Field_Bg)
+                        {
+                            ImGui.PushStyleColor(ImGuiCol.FrameBg, UI.Current.ParamDiffBackgroundColor);
+                        }
+                        else
+                        {
+                            ImGui.PushStyleColor(ImGuiCol.Text, UI.Current.ImGui_PrimaryChanged_Text);
+                        }
+
+                        pushedStyle = true;
+                    }
+                    else if (metaContext.HasAnyReferenceElements())
                     {
                         ImGui.PushStyleColor(ImGuiCol.Text, UI.Current.ImGui_IsRef_Text);
                         pushedStyle = true;
@@ -251,6 +271,18 @@ public class StayParamFieldWindow
                     {
                         ImGui.PopStyleColor();
                     }
+                }
+
+                //------------------------------
+                // Vanilla Stay Param Value Column
+                //------------------------------
+                if (CFG.Current.Param_ShowVanillaColumn && ImGui.TableNextColumn())
+                {
+                    ImGui.AlignTextToFramePadding();
+
+                    var colValue = vanillaCellValue?.ToParamEditorString() ?? "";
+
+                    ImGui.InputText("##colval", ref colValue, 256, ImGuiInputTextFlags.ReadOnly);
                 }
 
                 var committed = ParentView.FieldInputHandler.UpdateProperty(field, 
