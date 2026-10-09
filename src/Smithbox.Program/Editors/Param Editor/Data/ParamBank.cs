@@ -1243,16 +1243,14 @@ public class ParamBank : IDisposable
         // Stay Params
         StayParams = new();
         // Vanilla DS3 ships no stayparam container; the 5 stay params live inside Data0.bdt
-        var stayParamPath = @"Data0.bdt";
-
-        if (TargetFS.FileExists(stayParamPath))
+        if (TargetFS.FileExists(packedFilePath))
         {
             try
             {
-                var data = TargetFS.GetFile(stayParamPath).GetData().ToArray();
+                var data = TargetFS.GetFile(packedFilePath).GetData().ToArray();
                 using var bnd = SFUtil.DecryptDS3Regulation(data);
 
-                // Load every param in the regulation
+                // Load DS3 stay params
                 foreach (BinderFile f in bnd.Files)
                 {
                     if (!f.Name.EndsWith(".stayparam", StringComparison.OrdinalIgnoreCase))
@@ -1279,22 +1277,16 @@ public class ParamBank : IDisposable
                     }
                     catch
                     {
-
                         Smithbox.LogError(this,
                             LOC.Get("PARAM_Data_Failed_to_Load_StayParam", paramName));
                     }
                 }
             }
-            catch
+            catch (Exception e)
             {
                 Smithbox.LogError(this,
-                    LOC.Get("PARAM_Data_Failed_to_Find_StayParamContainer", stayParamPath, Name));
+                    LOC.Get("PARAM_Data_Failed_to_Load_GameParam", packedFilePath, Name), e);
             }
-        }
-        else
-        {
-            Smithbox.LogError(this,
-                LOC.Get("PARAM_Data_Failed_to_Find_StayParamContainer", stayParamPath, Name));
         }
 
         return successfulLoad;
@@ -1362,7 +1354,7 @@ public class ParamBank : IDisposable
 
             ProjectUtils.WriteWithBackup(Project, fs, toFs, Path.Join("param", "gameparam", "gameparam_dlc2.parambnd.dcx"), paramBND);
 
-            // The loose gameparam binder cannot carry stay params, so flush them to Data0.bdt
+            // Flush stay params to Data0.bdt
             if (StayParams.Count > 0)
             {
                 ProjectUtils.WriteWithBackup(Project, fs, toFs, @"Data0.bdt", paramBnd, ProjectType.DS3);
